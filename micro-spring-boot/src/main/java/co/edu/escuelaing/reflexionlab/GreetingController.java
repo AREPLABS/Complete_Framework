@@ -1,12 +1,13 @@
 package co.edu.escuelaing.reflexionlab;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 @RestController
 public class GreetingController {
 
-  private static final String template = "Hello, %s!";
+  private static final String template = "Probando / greeting con, %s!";
 
   @GetMapping({ "/greeting" })
   public String greeting(
@@ -15,22 +16,29 @@ public class GreetingController {
     return String.format(template, name);
   }
 
+  @GetMapping("/")
+  public String getFirst() {
+    try {
+      byte[] encoded = Files.readAllBytes(
+        Paths.get("src/main/resources/static/index.html")
+      );
+      return new String(encoded);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return "Error al leer el archivo index.html";
+    }
+  }
+
   @GetMapping("/books")
   public String getBooks() {
-    List<String> books = new ArrayList<>();
-    books.add("El Quijote");
-    books.add("Cien años de soledad");
-    books.add("1984");
-    books.add("El Principito");
-
-    StringBuilder html = new StringBuilder();
-    html.append("<html><head><title>Libros</title></head><body>");
-    html.append("<h1>Lista de Libros</h1><ul>");
-    for (String book : books) {
-      html.append("<li>").append(book).append("</li>");
+    try {
+      byte[] encoded = Files.readAllBytes(
+        Paths.get("src/main/resources/static/books.html")
+      );
+      return new String(encoded);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return "Error al leer el archivo index.html";
     }
-    html.append("</ul></body></html>");
-
-    return html.toString();
   }
 }

@@ -1,6 +1,8 @@
 package co.edu.escuelaing.reflexionlab;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -34,7 +36,8 @@ public class RequestHandler implements Runnable {
       if (requestLine != null && requestLine.startsWith("GET")) {
         String uri = requestLine.split(" ")[1];
         String response = handleGetRequest(uri);
-        sendResponse(out, response);
+        out.write(response.getBytes(StandardCharsets.UTF_8));
+        out.flush();
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -42,89 +45,144 @@ public class RequestHandler implements Runnable {
   }
 
   private String handleGetRequest(String uri) {
-    try {
-      String query = uri.contains("?") ? uri.split("\\?")[1] : "";
-      Map<String, String> queryParams = parseQueryParams(query); // Extraer parámetros
+    if (uri.equals("/")) {
+      uri = "/index.html"; // Redirigir a index.html
+    }
 
+    // Servir archivos estáticos
+    File file = new File("src/main/resources/static" + uri);
+    if (file.exists() && !file.isDirectory()) {
+      return serveFile(file);
+    }
+
+    // Si no se encuentra el archivo, buscar en los controladores
+    try {
       for (Object controllerInstance : controllerInstances) {
         Method[] methods = controllerInstance.getClass().getDeclaredMethods();
-
         for (Method method : methods) {
           if (method.isAnnotationPresent(GetMapping.class)) {
             GetMapping mapping = method.getAnnotation(GetMapping.class);
-
             for (String path : mapping.value()) {
-              if (uri.startsWith(path)) {
+              if (uri.equals(path)) {
+                Map<String, String> params = extractParams(uri);
                 Object[] args = new Object[method.getParameterCount()];
 
+                // Rellenar los parámetros según el tipo de datos esperado
                 for (int i = 0; i < method.getParameterCount(); i++) {
-                  if (
-                    method
-                      .getParameters()[i].isAnnotationPresent(
-                        RequestParam.class
-                      )
-                  ) {
-                    RequestParam paramAnnotation = method
-                      .getParameters()[i].getAnnotation(RequestParam.class);
-                    String paramName = paramAnnotation.value();
-                    String defaultValue = paramAnnotation.defaultValue();
+                  Class<?> paramType = method.getParameterTypes()[i];
+                  String paramName = method.getParameters()[i].getName();
+                  String paramValue = params.getOrDefault(paramName, "");
 
-                    // Obtener el valor del parámetro desde la URL o usar el valor por defecto
-                    args[i] = queryParams.getOrDefault(paramName, defaultValue);
+                  // Convertir tipos básicos si es necesario
+                  if (paramType == int.class || paramType == Integer.class) {
+                    args[i] =
+                      paramValue.isEmpty() ? 0 : Integer.parseInt(paramValue);
+                  } else if (
+                    paramType == double.class || paramType == Double.class
+                  ) {
+                    args[i] =
+                      paramValue.isEmpty()
+                        ? 0.0
+                        : Double.parseDouble(paramValue);
+                  } else {
+                    args[i] = paramValue; // String por defecto
                   }
                 }
 
-                return (String) method.invoke(controllerInstance, args);
+                // Invocar el método y obtener la respuesta
+                String responseBody = (String) method.invoke(
+                  controllerInstance,
+                  args
+                );
+
+                // Enviar la respuesta con las cabeceras adecuadas
+                return (
+                  "HTTP/1.1 200 OK\r\n" +
+                  "Content-Type: text/html; charset=UTF-8\r\n" +
+                  "Content-Length: " +
+                  responseBody.length() +
+                  "\r\n" +
+                  "\r\n" +
+                  responseBody
+                );
               }
             }
           }
         }
       }
-      return "404 Not Found";
     } catch (Exception e) {
       e.printStackTrace();
-      return "500 Internal Server Error";
+      return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    }
+
+    return "HTTP/1.1 404 Not Found\r\n\r\n";
+  }
+
+  private String serveFile(File file) {
+    try (FileInputStream fis = new FileInputStream(file)) {
+      byte[] fileData = new byte[(int) file.length()];
+      fis.read(fileData);
+
+      // Determinar el tipo de contenido basado en la extensión del archivo
+      String contentType = "text/html"; // Por defecto
+      if (file.getName().endsWith(".css")) {
+        contentType = "text/css";
+      } else if (file.getName().endsWith(".js")) {
+        contentType = "application/javascript";
+      } else if (file.getName().endsWith(".png")) {
+        contentType = "image/png";
+      } else if (
+        file.getName().endsWith(".jpg") || file.getName().endsWith(".jpeg")
+      ) {
+        contentType = "image/jpeg";
+      } else if (file.getName().endsWith(".gif")) {
+        contentType = "image/gif";
+      }
+
+      return (
+        "HTTP/1.1 200 OK\r\n" +
+        "Content-Type: " +
+        contentType +
+        "; charset=UTF-8\r\n" +
+        "Content-Length: " +
+        fileData.length +
+        "\r\n" +
+        "\r\n" +
+        new String(fileData, StandardCharsets.UTF_8)
+      );
+    } catch (IOException e) {
+      e.printStackTrace();
+      return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
     }
   }
 
-  // Método para extraer los parámetros de la URL y almacenarlos en un mapa
-  private Map<String, String> parseQueryParams(String query)
-    throws UnsupportedEncodingException {
-    Map<String, String> queryParams = new HashMap<>();
-    if (!query.isEmpty()) {
-      String[] pairs = query.split("&");
-      for (String pair : pairs) {
-        String[] keyValue = pair.split("=");
-        String key = URLDecoder.decode(keyValue[0], "UTF-8");
-        String value = keyValue.length > 1
-          ? URLDecoder.decode(keyValue[1], "UTF-8")
-          : "";
-        queryParams.put(key, value);
+  private Map<String, String> extractParams(String uri) {
+    Map<String, String> params = new HashMap<>();
+    if (uri.contains("?")) {
+      String[] parts = uri.split("\\?");
+      if (parts.length > 1) {
+        String queryString = parts[1];
+        String[] pairs = queryString.split("&");
+        for (String pair : pairs) {
+          String[] keyValue = pair.split("=");
+          if (keyValue.length == 2) {
+            try {
+              String key = URLDecoder.decode(
+                keyValue[0],
+                StandardCharsets.UTF_8.name()
+              );
+              String value = URLDecoder.decode(
+                keyValue[1],
+                StandardCharsets.UTF_8.name()
+              );
+              params.put(key, value);
+            } catch (UnsupportedEncodingException e) {
+              e.printStackTrace(); // Manejo de excepciones
+            }
+          }
+        }
       }
     }
-    return queryParams;
-  }
-
-  private void sendResponse(OutputStream out, String response)
-    throws IOException {
-    String statusLine = response.startsWith("404")
-      ? "HTTP/1.1 404 Not Found"
-      : response.startsWith("500")
-        ? "HTTP/1.1 500 Internal Server Error"
-        : "HTTP/1.1 200 OK";
-
-    out.write(
-      (
-        statusLine +
-        "\r\n" +
-        "Content-Type: text/plain\r\n" +
-        "Content-Length: " +
-        response.length() +
-        "\r\n" +
-        "\r\n" +
-        response
-      ).getBytes(StandardCharsets.UTF_8)
-    );
-    out.flush();
+    return params;
   }
 }
