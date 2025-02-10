@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.net.Socket;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -50,7 +51,17 @@ public class RequestHandler implements Runnable {
     }
 
     // Servir archivos estáticos
-    File file = new File("src/main/resources/static" + uri);
+    File file = null;
+    try {
+      file =
+        new File(
+          getClass().getClassLoader().getResource("static" + uri).toURI()
+        );
+    } catch (URISyntaxException e) {
+      e.printStackTrace();
+      return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    }
+
     if (file.exists() && !file.isDirectory()) {
       return serveFile(file);
     }

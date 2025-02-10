@@ -1,8 +1,8 @@
 package co.edu.escuelaing.reflexionlab;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
 
 @RestController
 public class GreetingController {
@@ -18,14 +18,23 @@ public class GreetingController {
 
   @GetMapping("/")
   public String getFirst() {
-    try {
-      byte[] encoded = Files.readAllBytes(
-        Paths.get("src/main/resources/static/index.html")
-      );
-      return new String(encoded);
-    } catch (IOException e) {
+    System.out.println(
+      getClass().getClassLoader().getResource("static/index.html")
+    );
+    try (
+      InputStream inputStream = getClass()
+        .getClassLoader()
+        .getResourceAsStream("static/index.html")
+    ) {
+      if (inputStream == null) {
+        return "Error: index.html no encontrado";
+      }
+      Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())
+        .useDelimiter("\\A");
+      return scanner.hasNext() ? scanner.next() : "";
+    } catch (Exception e) {
       e.printStackTrace();
-      return "Error al leer el archivo index.html";
+      return "Error al leer index.html";
     }
   }
 }
