@@ -10,5 +10,5 @@ import java.lang.annotation.Target;
 public @interface RequestParam {
   String value();
 
-  String defaultValue() default ""; // Asegúrate de que tenga un valor por defecto
+  String defaultValue(); // Asegúrate de que tenga un valor por defecto
 }

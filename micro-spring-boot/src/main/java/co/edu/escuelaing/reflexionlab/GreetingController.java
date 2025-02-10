@@ -28,17 +28,4 @@ public class GreetingController {
       return "Error al leer el archivo index.html";
     }
   }
-
-  @GetMapping("/books")
-  public String getBooks() {
-    try {
-      byte[] encoded = Files.readAllBytes(
-        Paths.get("src/main/resources/static/books.html")
-      );
-      return new String(encoded);
-    } catch (IOException e) {
-      e.printStackTrace();
-      return "Error al leer el archivo index.html";
-    }
-  }
 }
