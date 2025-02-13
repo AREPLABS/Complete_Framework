@@ -19,7 +19,7 @@ public @interface RestController {}`,
             "Elimina la necesidad de usar @ResponseBody en cada método"
         ],
         tags: ["Controller", "REST", "Spring MVC"],
-        image: "url_de_la_imagen_rest_controller.jpg" // URL de la imagen
+        image: "yaya.jpg" // URL de la imagen
     },
     {
         name: "@GetMapping",

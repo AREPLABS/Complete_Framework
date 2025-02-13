@@ -1,17 +1,13 @@
-package co.edu.escuelaing.reflexionlab;
+package co.edu.escuelaing.reflexionlab.Controlador;
 
+import co.edu.escuelaing.reflexionlab.Anotaciones.GetMapping;
+import co.edu.escuelaing.reflexionlab.Anotaciones.RequestParam;
+import co.edu.escuelaing.reflexionlab.Anotaciones.RestController;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 @RestController
 public class GreetingController {
