@@ -1,8 +1,17 @@
 package co.edu.escuelaing.reflexionlab;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 @RestController
 public class GreetingController {
@@ -116,30 +125,22 @@ public class GreetingController {
         .getResourceAsStream("static/main.js")
     ) {
       if (inputStream == null) {
-        return (
-          "HTTP/1.1 404 Not Found\r\n" +
-          "Content-Type: text/plain\r\n" +
-          "Content-Length: 30\r\n" +
-          "\r\n" +
-          "Error: main.js no encontrado"
-        );
+        return "Error: main.js no encontrado";
       }
-      Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())
-        .useDelimiter("\\A");
-      String responseBody = scanner.hasNext() ? scanner.next() : "";
 
-      return (
-        "HTTP/1.1 200 OK\r\n" +
-        "Content-Type: application/javascript; charset=UTF-8\r\n" +
-        "Content-Length: " +
-        responseBody.length() +
-        "\r\n" +
-        "\r\n" +
-        responseBody
-      );
-    } catch (Exception e) {
+      // Leer el InputStream en un ByteArrayOutputStream
+      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+      byte[] data = new byte[1024];
+      int bytesRead;
+      while ((bytesRead = inputStream.read(data, 0, data.length)) != -1) {
+        buffer.write(data, 0, bytesRead);
+      }
+
+      // Convertir el contenido a un arreglo de bytes
+      return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
       e.printStackTrace();
-      return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+      return "Error al leer el archivo";
     }
   }
 }
