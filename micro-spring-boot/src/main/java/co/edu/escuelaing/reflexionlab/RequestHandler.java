@@ -46,23 +46,14 @@ public class RequestHandler implements Runnable {
   }
 
   private String handleGetRequest(String uri) {
+    System.out.println("Handling GET request for URI: " + uri);
     if (uri.equals("/")) {
-      uri = "/index.html"; // Redirigir a index.html
+      uri = "/index.html";
     }
 
-    // Servir archivos estáticos
-    File file = null;
-    try {
-      file =
-        new File(
-          getClass().getClassLoader().getResource("static" + uri).toURI()
-        );
-    } catch (URISyntaxException e) {
-      e.printStackTrace();
-      return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
-    }
-
-    if (file.exists() && !file.isDirectory()) {
+    // Intentar servir un archivo estático
+    File file = new File("src/main/resources/static" + uri);
+    if (file.exists()) {
       return serveFile(file);
     }
 
@@ -75,6 +66,7 @@ public class RequestHandler implements Runnable {
             GetMapping mapping = method.getAnnotation(GetMapping.class);
             for (String path : mapping.value()) {
               if (uri.equals(path)) {
+                // Aquí se invoca el método del controlador
                 Map<String, String> params = extractParams(uri);
                 Object[] args = new Object[method.getParameterCount()];
 
